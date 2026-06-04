@@ -1,0 +1,33 @@
+# Environment files — never commit keys
+.env
+.env.local
+backend/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
