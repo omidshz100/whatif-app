@@ -8,7 +8,12 @@ completely independent of this file.
 
 from __future__ import annotations
 import os
+import sys
 from typing import Any, Dict, List, Optional
+
+# Vercel runs functions from the project root, so we need to add the api/
+# directory to sys.path so sibling modules (llm_layer, bayesian_engine, etc.) resolve.
+sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
