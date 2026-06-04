@@ -25,9 +25,15 @@ from investigations import INVESTIGATIONS, ORDER
 
 app = FastAPI(title="WhatIf API", version="1.0.0")
 
+_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+# Vercel injects VERCEL_URL (no scheme) for every deployment
+_vercel_url = os.getenv("VERCEL_URL")
+if _vercel_url:
+    _origins.append(f"https://{_vercel_url}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
