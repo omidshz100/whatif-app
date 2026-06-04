@@ -370,7 +370,7 @@ def generate_structure(problem_text: str) -> Dict[str, Any]:
         "Return ONLY the JSON object."
     )
     try:
-        raw = _call_llm(prompt, max_tokens=2048)
+        raw = _call_llm(prompt, max_tokens=4096)
         if not raw:
             return {"error": "empty", "message": "LLM returned an empty response."}
         # Strip accidental markdown fences
