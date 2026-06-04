@@ -205,6 +205,15 @@ def _result_to_out(result) -> ComputeOut:
 # Routes — investigations
 # ---------------------------------------------------------------------------
 
+# Cache default-evidence results for built-in investigations so warm requests
+# don't recompute on every call (results are deterministic given fixed inputs).
+_default_results: dict = {
+    inv_id: compute(INVESTIGATIONS[inv_id], INVESTIGATIONS[inv_id].defaults)
+    for inv_id in ORDER
+    if not INVESTIGATIONS[inv_id].is_placeholder
+}
+
+
 @app.get("/api/investigations", response_model=List[InvestigationSummaryOut])
 def list_investigations():
     """List all investigations (built-in + dynamic) with their top result."""
@@ -215,7 +224,7 @@ def list_investigations():
         top_label = None
         top_p = None
         if not inv.is_placeholder:
-            result = compute(inv, inv.defaults)
+            result = _default_results[inv_id]
             top_label = result.top.label
             top_p = result.top.p
         summaries.append(InvestigationSummaryOut(
