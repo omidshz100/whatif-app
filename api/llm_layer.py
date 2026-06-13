@@ -330,6 +330,65 @@ _GENERATE_EXAMPLE = """Example output for "My café's morning revenue is down":
 }"""
 
 
+def _repair_spec(spec: dict) -> dict:
+    """Auto-fix common LLM omissions so minor format gaps don't fail the user."""
+    cause_ids = [c["id"] for c in spec.get("causes", [])]
+
+    for ev in spec.get("evidence_nodes", []):
+        kind = ev.get("kind", "slider")
+
+        # Auto-generate missing states
+        if not ev.get("states"):
+            if kind == "toggle":
+                ev["states"] = [
+                    {"id": "yes", "label": "Yes"},
+                    {"id": "no",  "label": "No"},
+                ]
+            elif kind == "segment":
+                opts = ev.get("options", [])
+                if opts:
+                    ev["states"] = [{"id": o["id"], "label": o["label"]} for o in opts]
+                else:
+                    ev["states"] = [
+                        {"id": "low",  "label": "Low"},
+                        {"id": "mid",  "label": "Mid"},
+                        {"id": "high", "label": "High"},
+                    ]
+            else:  # slider
+                lo = float(ev.get("min", 0))
+                hi = float(ev.get("max", 100))
+                mid = (lo + hi) / 2
+                ev["states"] = [
+                    {"id": "low",  "label": "Low",  "max_threshold": mid},
+                    {"id": "high", "label": "High", "max_threshold": hi},
+                ]
+
+        state_ids = [s["id"] for s in ev["states"]]
+
+        # Auto-generate missing associations (neutral weight = 1)
+        if not ev.get("associations"):
+            ev["associations"] = {cid: {sid: 1 for sid in state_ids} for cid in cause_ids}
+        else:
+            for cid in cause_ids:
+                if cid not in ev["associations"]:
+                    ev["associations"][cid] = {sid: 1 for sid in state_ids}
+                else:
+                    for sid in state_ids:
+                        if sid not in ev["associations"][cid]:
+                            ev["associations"][cid][sid] = 1
+
+        # Fix default if missing
+        if ev.get("default") is None:
+            if kind == "toggle":
+                ev["default"] = False
+            elif kind == "segment" and state_ids:
+                ev["default"] = state_ids[0]
+            else:
+                ev["default"] = ev.get("min", 0)
+
+    return spec
+
+
 def _validate_spec(spec: dict) -> Optional[str]:
     """Return an error message if the spec is structurally invalid, else None."""
     if not spec.get("title"):
@@ -345,7 +404,6 @@ def _validate_spec(spec: dict) -> Optional[str]:
             return f"Evidence node missing required fields: {ev}"
         if not ev.get("states"):
             return f"Evidence node '{ev['id']}' has no states"
-        # Check associations reference known cause ids
         for cid in ev.get("associations", {}):
             if cid not in cause_ids:
                 return f"Association references unknown cause '{cid}' in evidence '{ev['id']}'"
@@ -387,6 +445,7 @@ def generate_structure(problem_text: str) -> Dict[str, Any]:
     except Exception as e:
         return {"error": "llm", "message": str(e)}
 
+    spec = _repair_spec(spec)
     err = _validate_spec(spec)
     if err:
         return {"error": "invalid_spec", "message": f"LLM produced an invalid spec: {err}",
