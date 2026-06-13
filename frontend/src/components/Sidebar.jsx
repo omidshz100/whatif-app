@@ -1,6 +1,14 @@
 import { IconPlus, IconGear } from './Icons.jsx';
 
-export function Sidebar({ investigations, activeId, onSelect, onNew, onSettings, settingsOpen }) {
+function IconX() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+export function Sidebar({ investigations, activeId, onSelect, onNew, onDelete, onSettings, settingsOpen }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
@@ -29,6 +37,14 @@ export function Sidebar({ investigations, activeId, onSelect, onNew, onSettings,
                 <span className="case-cause">{inv.top_label}</span>
               </span>
             )}
+            <span
+              className="case-delete"
+              role="button"
+              title="Remove"
+              onClick={e => { e.stopPropagation(); onDelete(inv.id); }}
+            >
+              <IconX />
+            </span>
           </button>
         ))}
       </nav>

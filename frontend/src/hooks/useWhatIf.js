@@ -161,6 +161,21 @@ export function useWhatIf() {
     setWizardOpen(false);
   }, []);
 
+  const deleteInvestigation = useCallback((id) => {
+    _removeSavedSpec(id);
+    setInvestigations(prev => {
+      const next = prev.filter(s => s.id !== id);
+      if (activeId === id) {
+        const fallback = next.find(s => !s.is_placeholder) || next[0];
+        if (fallback) setActiveId(fallback.id);
+      }
+      return next;
+    });
+    setInvDetails(prev => { const n = { ...prev }; delete n[id]; return n; });
+    setComputedByCase(prev => { const n = { ...prev }; delete n[id]; return n; });
+    setValuesByCase(prev => { const n = { ...prev }; delete n[id]; return n; });
+  }, [activeId]);
+
   const applyExtractedEvidence = useCallback(async (text) => {
     const inv = invDetails[activeId];
     if (!inv) return { ok: false, message: 'Investigation not loaded' };
@@ -198,6 +213,7 @@ export function useWhatIf() {
     setOpenWhy,
     openWizard,
     onInvestigationCreated,
+    deleteInvestigation,
     applyExtractedEvidence,
   };
 }

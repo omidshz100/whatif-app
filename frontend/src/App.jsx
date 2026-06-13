@@ -26,6 +26,7 @@ export default function App() {
     setOpenWhy,
     openWizard,
     onInvestigationCreated,
+    deleteInvestigation,
     applyExtractedEvidence,
   } = useWhatIf();
 
@@ -43,6 +44,7 @@ export default function App() {
         activeId={activeId}
         onSelect={selectCase}
         onNew={openWizard}
+        onDelete={deleteInvestigation}
         onSettings={() => setSettingsOpen(true)}
         settingsOpen={settingsOpen}
       />
