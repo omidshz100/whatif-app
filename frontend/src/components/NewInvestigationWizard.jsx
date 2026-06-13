@@ -307,7 +307,7 @@ export function NewInvestigationWizard({ onCreated, onCancel }) {
 
     try {
       const inv = await api.createInvestigation(finalSpec);
-      onCreated(inv);
+      onCreated(inv, finalSpec);
     } catch (e) {
       setError(e.message);
       setStep('review');

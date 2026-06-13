@@ -1,6 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, debounce } from '../api.js';
 
+const LS_KEY = 'whatif_dynamic_specs';
+function _loadSavedSpecs() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+}
+function _saveSavedSpec(id, spec) {
+  try {
+    const all = _loadSavedSpecs();
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...all, [id]: spec }));
+  } catch {}
+}
+function _removeSavedSpec(id) {
+  try {
+    const all = _loadSavedSpecs();
+    delete all[id];
+    localStorage.setItem(LS_KEY, JSON.stringify(all));
+  } catch {}
+}
+
 export function useWhatIf() {
   const [investigations, setInvestigations] = useState([]);
   const [activeId, setActiveId] = useState('electricity');
@@ -16,13 +34,37 @@ export function useWhatIf() {
   useEffect(() => {
     async function bootstrap() {
       try {
-        const summaries = await api.listInvestigations();
+        let summaries = await api.listInvestigations();
+
+        // Re-create any dynamic investigations saved in localStorage that are
+        // missing from the server (serverless functions lose in-memory state).
+        const savedSpecs = _loadSavedSpecs();
+        const serverIds = new Set(summaries.map(s => s.id));
+        for (const [id, spec] of Object.entries(savedSpecs)) {
+          if (!serverIds.has(id)) {
+            try {
+              const inv = await api.createInvestigation(spec);
+              summaries = [...summaries, {
+                id: inv.id, title: inv.title, subtitle: inv.subtitle,
+                is_placeholder: false, top_label: null, top_p: null,
+              }];
+            } catch (_) {
+              // If re-creation fails, remove stale spec from storage.
+              _removeSavedSpec(id);
+            }
+          }
+        }
+
         setInvestigations(summaries);
         setActiveId(summaries[0]?.id || 'electricity');
 
-        const details = await Promise.all(
+        // Use allSettled so a single 404 doesn't crash the whole bootstrap.
+        const settled = await Promise.allSettled(
           summaries.filter(s => !s.is_placeholder).map(s => api.getInvestigation(s.id))
         );
+        const details = settled
+          .filter(r => r.status === 'fulfilled')
+          .map(r => r.value);
 
         const detailMap = {};
         const valuesMap = {};
@@ -85,7 +127,9 @@ export function useWhatIf() {
   }, []);
 
   // Called by the wizard after the user confirms the spec and the backend creates the investigation
-  const onInvestigationCreated = useCallback(async (invOut) => {
+  const onInvestigationCreated = useCallback(async (invOut, spec) => {
+    // Persist spec to localStorage so it survives page reloads (serverless is stateless).
+    if (spec) _saveSavedSpec(invOut.id, { ...spec, id: invOut.id });
     // invOut is the InvestigationOut from POST /api/investigations
     const inv = invOut;
     const defaults = inv.defaults;
