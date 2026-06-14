@@ -12,7 +12,6 @@ import { TernaMode } from './components/TernaMode.jsx';
 
 export default function App() {
   const [appMode, setAppMode] = useState('whatif');
-  if (appMode === 'terna') return <TernaMode onBack={() => setAppMode('whatif')} />;
   const {
     investigations,
     activeId,
@@ -35,6 +34,8 @@ export default function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // All hooks must be called before any conditional return
+  if (appMode === 'terna') return <TernaMode onBack={() => setAppMode('whatif')} />;
   if (loading) return <LoadingShell />;
   if (error) return <ErrorShell message={error} />;
 
