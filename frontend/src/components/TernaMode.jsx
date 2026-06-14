@@ -16,6 +16,72 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+// Terna resilience category colours
+const CATEGORY_COLORS = {
+  Monitoring: '#22c55e',
+  Prevention: '#3b82f6',
+  Mitigation: '#f97316',
+  Response:   '#ef4444',
+  Recovery:   '#a855f7',
+};
+
+/**
+ * Map Bayesian risk + discretized evidence states to a Terna resilience action.
+ * Mirrors the server-side _terna_action() logic so the detail panel can pick up
+ * nuances (e.g. very_steep + clay → Relocation; peak passed → Recovery).
+ */
+function buildActionPlan(risk, states = {}, peakPassed = false) {
+  const slope    = states.slope     || 'flat';
+  const soilType = states.soil_type || 'sand';
+
+  if (peakPassed && risk < 35) {
+    return {
+      category:  'Recovery',
+      condition: 'Event concluded — risk subsiding after critical peak',
+      impact:    'Asset damage assessment required; line restoration pending',
+      action:    'Rapid restoration + model update',
+    };
+  }
+  if (risk >= 75) {
+    return {
+      category:  'Response',
+      condition: 'Active landslide on asset — critical Bayesian posterior (≥75%)',
+      impact:    'Imminent line outage; cascading fault risk across grid segment',
+      action:    'Bypass + emergency plan',
+    };
+  }
+  if (risk >= 55) {
+    return {
+      category:  'Mitigation',
+      condition: 'Landslide triggered near asset — debris flow within 100–200 m',
+      impact:    'Line span at risk; load redistribution and alternate routing required',
+      action:    'Network redundancy / alternative configuration',
+    };
+  }
+  if (risk >= 30) {
+    if (slope === 'very_steep' && soilType === 'clay') {
+      return {
+        category:  'Prevention',
+        condition: 'Repeated high-risk conditions — steep clay terrain with heavy rainfall',
+        impact:    'Long-term foundation degradation; structural integrity at risk',
+        action:    'Relocation / line burial',
+      };
+    }
+    return {
+      category:  'Prevention',
+      condition: 'Probable landslide — cumulative rainfall exceeds threshold on susceptible terrain',
+      impact:    'Foundation degradation and potential mass movement threatening asset',
+      action:    'Foundation reinforcement / structural verification',
+    };
+  }
+  return {
+    category:  'Monitoring',
+    condition: 'Alert phase — risk within acceptable bounds, no immediate trigger',
+    impact:    'No current network impact; maintaining operational awareness',
+    action:    'Monitoring + early warning',
+  };
+}
+
 function riskColor(r) {
   if (r >= 70) return '#ef4444';
   if (r >= 50) return '#f97316';
@@ -157,7 +223,17 @@ function AlertPanel({ alerts, selectedId, onSelect }) {
               </div>
               <div className="terna-alert-name">{a.name.split('—')[1]?.trim()}</div>
               <div className="terna-alert-peak">Peak {hourLabel(a.peak_hour)}</div>
-              <div className="terna-alert-action">{a.action.split('—')[0].trim()}</div>
+              <div className="terna-alert-action">
+                {a.action_category && (
+                  <span
+                    className="terna-alert-cat-badge"
+                    style={{ background: CATEGORY_COLORS[a.action_category] || '#6366f1' }}
+                  >
+                    {a.action_category}
+                  </span>
+                )}
+                {a.action}
+              </div>
             </li>
           ))}
         </ul>
@@ -246,13 +322,9 @@ function DetailPanel({ detail, hour, onClose }) {
   const color = riskColor(risk);
   const maxContrib = Math.max(...detail.contributions.map(c => Math.abs(c.delta)), 1);
 
-  const actions = risk >= 75
-    ? ['Dispatch inspection crew immediately', 'Prepare emergency load re-routing', 'Notify grid operations centre']
-    : risk >= 55
-    ? ['Schedule urgent inspection within 6h', 'Notify grid operations', 'Keep backup route on standby']
-    : risk >= 30
-    ? ['Enhanced monitoring every 2h', 'Pre-position inspection crew', 'Review pylon structural logs']
-    : ['Continue standard monitoring', 'Next scheduled check on time'];
+  const peakPassed = detail.peak_hour < hour && detail.peak_risk >= 55;
+  const actionPlan = buildActionPlan(risk, detail.states || {}, peakPassed);
+  const catColor   = CATEGORY_COLORS[actionPlan.category] || '#6366f1';
 
   return (
     <aside className="terna-detail">
@@ -365,16 +437,27 @@ function DetailPanel({ detail, hour, onClose }) {
         return null;
       })}
 
-      {/* Recommended actions */}
-      <div className="terna-section-label" style={{ marginTop: 16 }}>Recommended actions</div>
-      <ul className="terna-actions">
-        {actions.map((a, i) => (
-          <li key={i} className="terna-action-item">
-            <span className="terna-action-bullet" style={{ background: color }} />
-            {a}
-          </li>
-        ))}
-      </ul>
+      {/* Recommended action */}
+      <div className="terna-section-label" style={{ marginTop: 16 }}>Recommended action</div>
+      <div className="terna-action-card" style={{ borderColor: catColor + '55' }}>
+        <span className="terna-action-cat-badge" style={{ background: catColor }}>
+          {actionPlan.category}
+        </span>
+        <div className="terna-action-field">
+          <span className="terna-action-field-lbl">Condition</span>
+          <span className="terna-action-field-val">{actionPlan.condition}</span>
+        </div>
+        <div className="terna-action-field">
+          <span className="terna-action-field-lbl">Network impact</span>
+          <span className="terna-action-field-val">{actionPlan.impact}</span>
+        </div>
+        <div className="terna-action-field" style={{ marginBottom: 0 }}>
+          <span className="terna-action-field-lbl">Action</span>
+          <span className="terna-action-field-val" style={{ color: catColor, fontWeight: 600 }}>
+            {actionPlan.action}
+          </span>
+        </div>
+      </div>
     </aside>
   );
 }

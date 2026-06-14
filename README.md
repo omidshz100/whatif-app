@@ -153,6 +153,27 @@ The math is transparent and verifiable.
 
 ---
 
+## Terna Grid Monitor — action logic
+
+The "Recommended action" shown for each pylon follows Terna's published resilience
+category framework, mapping the Bayesian posterior risk to one of five operational
+categories:
+
+| Risk level | Category | Action |
+|---|---|---|
+| < 30 % | **Monitoring** | Monitoring + early warning |
+| 30–55 % (probable landslide) | **Prevention** | Foundation reinforcement / structural verification |
+| 30–55 % (repeated, steep clay) | **Prevention** | Relocation / line burial |
+| 55–75 % (triggered near asset) | **Mitigation** | Network redundancy / alternative configuration |
+| ≥ 75 % (active, critical) | **Response** | Bypass + emergency plan |
+| Post-event, risk subsiding | **Recovery** | Rapid restoration + model update |
+
+The mapping is computed independently in `api/index.py` (`_terna_action`) for alerts
+and in `frontend/src/components/TernaMode.jsx` (`buildActionPlan`) for the detail panel
+— the latter adds the *Recovery* category when the peak hour has already passed.
+
+---
+
 ## Tech stack
 
 | Layer | Technology |

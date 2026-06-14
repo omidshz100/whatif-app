@@ -450,6 +450,46 @@ def health():
 # Terna — Landslide Risk for Transmission Pylons
 # ---------------------------------------------------------------------------
 
+# Terna resilience action table
+# Maps Bayesian risk level + terrain context to one of five operational categories.
+def _terna_action(risk: float, slope: float = 15.0, soil_type: str = "clay") -> dict:
+    """Return structured Terna-aligned action for a given risk level and terrain."""
+    if risk >= 75:
+        return {
+            "action_category":  "Response",
+            "action_condition": "Active landslide on asset — critical Bayesian posterior (≥75%)",
+            "action_impact":    "Imminent line outage; cascading fault risk across grid segment",
+            "action":           "Bypass + emergency plan",
+        }
+    if risk >= 55:
+        return {
+            "action_category":  "Mitigation",
+            "action_condition": "Landslide triggered near asset — debris flow within 100–200 m",
+            "action_impact":    "Line span at risk; load redistribution and alternate routing required",
+            "action":           "Network redundancy / alternative configuration",
+        }
+    if risk >= 30:
+        if slope >= 30 and soil_type == "clay":
+            return {
+                "action_category":  "Prevention",
+                "action_condition": "Repeated high-risk conditions — steep clay terrain with heavy rainfall",
+                "action_impact":    "Long-term foundation degradation; pylon stability at risk over multiple events",
+                "action":           "Relocation / line burial",
+            }
+        return {
+            "action_category":  "Prevention",
+            "action_condition": "Probable landslide — cumulative rainfall exceeds threshold on susceptible terrain",
+            "action_impact":    "Foundation degradation and potential mass movement threatening asset",
+            "action":           "Foundation reinforcement / structural verification",
+        }
+    return {
+        "action_category":  "Monitoring",
+        "action_condition": "Alert phase — risk within acceptable bounds, no immediate trigger",
+        "action_impact":    "No current network impact; maintaining operational awareness",
+        "action":           "Monitoring + early warning",
+    }
+
+
 def _all_risks(pylon_id: str):
     """Compute risk for every hour in the 48h forecast (cached via module)."""
     slots = terna_syn.get_forecast(pylon_id, 48)
@@ -508,6 +548,7 @@ def terna_pylon_detail(pylon_id: str, hour: int = 0):
         "hour":          hour,
         "evidence":      slot,
         "risk":          risk_out["risk"],
+        "states":        risk_out["states"],
         "contributions": risk_out["contributions"],
         "evidence_meta": TERNA_EVIDENCE_META,
         "peak_hour":     peak_h,
@@ -529,23 +570,21 @@ def terna_alerts(threshold: float = 45.0, hour: int = 0):
             continue
         if peak_r >= 75:
             severity = "critical"
-            action   = "Dispatch inspection crew immediately — prepare emergency load re-routing"
         elif peak_r >= 55:
             severity = "high"
-            action   = "Schedule urgent inspection within 6h — notify grid operations"
         else:
             severity = "medium"
-            action   = "Enhanced monitoring every 2h — keep crew on standby"
+        action_plan = _terna_action(peak_r, pylon.get("slope", 15), pylon.get("soil_type", "clay"))
         alerts.append({
-            "pylon_id":    pylon["id"],
-            "name":        pylon["name"],
-            "lat":         pylon["lat"],
-            "lon":         pylon["lon"],
+            "pylon_id":     pylon["id"],
+            "name":         pylon["name"],
+            "lat":          pylon["lat"],
+            "lon":          pylon["lon"],
             "current_risk": current,
-            "peak_risk":   peak_r,
-            "peak_hour":   peak_h,
-            "severity":    severity,
-            "action":      action,
+            "peak_risk":    peak_r,
+            "peak_hour":    peak_h,
+            "severity":     severity,
+            **action_plan,
         })
     alerts.sort(key=lambda a: a["peak_risk"], reverse=True)
     return alerts
