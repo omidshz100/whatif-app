@@ -23,6 +23,8 @@ import llm_layer
 import investigations_dynamic as dyn_inv
 from bayesian_engine import compute
 from investigations import INVESTIGATIONS, ORDER
+from terna_bayesian import compute_risk as terna_compute_risk, EVIDENCE_META as TERNA_EVIDENCE_META
+import terna_synthetic as terna_syn
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -442,3 +444,108 @@ def test_connection():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Terna — Landslide Risk for Transmission Pylons
+# ---------------------------------------------------------------------------
+
+def _all_risks(pylon_id: str):
+    """Compute risk for every hour in the 48h forecast (cached via module)."""
+    slots = terna_syn.get_forecast(pylon_id, 48)
+    return [terna_compute_risk(s)["risk"] for s in slots]
+
+
+@app.get("/api/terna/pylons")
+def terna_list_pylons(hour: int = 0):
+    """All pylons with their risk at the given forecast hour."""
+    result = []
+    for pylon in terna_syn.PYLONS:
+        risks = _all_risks(pylon["id"])
+        current = risks[min(hour, len(risks) - 1)]
+        peak_h  = int(max(range(len(risks)), key=lambda i: risks[i]))
+        result.append({
+            "id":          pylon["id"],
+            "name":        pylon["name"],
+            "lat":         pylon["lat"],
+            "lon":         pylon["lon"],
+            "description": pylon["description"],
+            "slope":       pylon["slope"],
+            "soil_type":   pylon["soil_type"],
+            "risk":        current,
+            "peak_risk":   risks[peak_h],
+            "peak_hour":   peak_h,
+        })
+    return result
+
+
+@app.get("/api/terna/forecast")
+def terna_full_forecast(hours: int = 48):
+    """48h risk forecast for all pylons (used to draw sparklines / timelines)."""
+    result = {}
+    for pylon in terna_syn.PYLONS:
+        slots = terna_syn.get_forecast(pylon["id"], hours)
+        result[pylon["id"]] = [
+            {"hour": s["hour"], "risk": terna_compute_risk(s)["risk"]}
+            for s in slots
+        ]
+    return result
+
+
+@app.get("/api/terna/pylons/{pylon_id}/detail")
+def terna_pylon_detail(pylon_id: str, hour: int = 0):
+    """Full Bayesian breakdown for a pylon at a specific forecast hour."""
+    pylon = terna_syn.PYLON_MAP.get(pylon_id)
+    if not pylon:
+        raise HTTPException(status_code=404, detail="Pylon not found")
+    slots   = terna_syn.get_forecast(pylon_id, 48)
+    slot    = slots[min(hour, len(slots) - 1)]
+    risk_out = terna_compute_risk(slot)
+    risks   = [terna_compute_risk(s)["risk"] for s in slots]
+    peak_h  = int(max(range(len(risks)), key=lambda i: risks[i]))
+    return {
+        **pylon,
+        "hour":          hour,
+        "evidence":      slot,
+        "risk":          risk_out["risk"],
+        "contributions": risk_out["contributions"],
+        "evidence_meta": TERNA_EVIDENCE_META,
+        "peak_hour":     peak_h,
+        "peak_risk":     risks[peak_h],
+        "all_risks":     risks,
+    }
+
+
+@app.get("/api/terna/alerts")
+def terna_alerts(threshold: float = 45.0, hour: int = 0):
+    """Pylons whose peak risk (next 48h) exceeds `threshold`, sorted by urgency."""
+    alerts = []
+    for pylon in terna_syn.PYLONS:
+        risks    = _all_risks(pylon["id"])
+        peak_h   = int(max(range(len(risks)), key=lambda i: risks[i]))
+        peak_r   = risks[peak_h]
+        current  = risks[min(hour, len(risks) - 1)]
+        if peak_r < threshold:
+            continue
+        if peak_r >= 75:
+            severity = "critical"
+            action   = "Dispatch inspection crew immediately — prepare emergency load re-routing"
+        elif peak_r >= 55:
+            severity = "high"
+            action   = "Schedule urgent inspection within 6h — notify grid operations"
+        else:
+            severity = "medium"
+            action   = "Enhanced monitoring every 2h — keep crew on standby"
+        alerts.append({
+            "pylon_id":    pylon["id"],
+            "name":        pylon["name"],
+            "lat":         pylon["lat"],
+            "lon":         pylon["lon"],
+            "current_risk": current,
+            "peak_risk":   peak_r,
+            "peak_hour":   peak_h,
+            "severity":    severity,
+            "action":      action,
+        })
+    alerts.sort(key=lambda a: a["peak_risk"], reverse=True)
+    return alerts

@@ -8,8 +8,11 @@ import { NLPInput } from './components/NLPInput.jsx';
 import { SettingsPanel } from './components/SettingsPanel.jsx';
 import { NewInvestigationWizard } from './components/NewInvestigationWizard.jsx';
 import { Pct } from './components/Pct.jsx';
+import { TernaMode } from './components/TernaMode.jsx';
 
 export default function App() {
+  const [appMode, setAppMode] = useState('whatif');
+  if (appMode === 'terna') return <TernaMode onBack={() => setAppMode('whatif')} />;
   const {
     investigations,
     activeId,
@@ -46,6 +49,7 @@ export default function App() {
         onNew={openWizard}
         onDelete={deleteInvestigation}
         onSettings={() => setSettingsOpen(true)}
+        onTerna={() => setAppMode('terna')}
         settingsOpen={settingsOpen}
       />
 

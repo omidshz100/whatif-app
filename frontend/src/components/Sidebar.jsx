@@ -8,7 +8,7 @@ function IconX() {
   );
 }
 
-export function Sidebar({ investigations, activeId, onSelect, onNew, onDelete, onSettings, settingsOpen }) {
+export function Sidebar({ investigations, activeId, onSelect, onNew, onDelete, onSettings, settingsOpen, onTerna }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
@@ -51,6 +51,10 @@ export function Sidebar({ investigations, activeId, onSelect, onNew, onDelete, o
 
       <button className="new-btn" onClick={onNew}>
         <IconPlus /> New investigation
+      </button>
+
+      <button className="terna-mode-btn" onClick={onTerna}>
+        ⚡ Terna Grid Monitor
       </button>
 
       <div className="sidebar-footer">

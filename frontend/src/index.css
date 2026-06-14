@@ -670,3 +670,230 @@ h1, h2, h3, p { margin: 0; }
 .wiz-review-hint {
   font-size: 12.5px; color: var(--text-3); line-height: 1.55; max-width: 80ch; margin: 0;
 }
+
+/* ============================================================
+   Terna Grid Monitor Styles
+   ============================================================ */
+
+/* ─── Sidebar entry point ─────────────────────────────────── */
+.terna-mode-btn {
+  display: flex; align-items: center; gap: 7px;
+  width: calc(100% - 24px); margin: 8px 12px 0;
+  padding: 9px 14px; border-radius: var(--r-md);
+  background: #1e1b4b; color: #c7d2fe;
+  font-size: 13px; font-weight: 600; border: none; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.terna-mode-btn:hover { background: #312e81; color: #e0e7ff; }
+
+/* ─── Root layout ─────────────────────────────────────────── */
+.terna-root {
+  display: flex; flex-direction: column;
+  width: 100vw; height: 100vh; overflow: hidden;
+  background: #0f172a; color: #e2e8f0; font-family: var(--font, system-ui, sans-serif);
+}
+
+/* ─── Header ──────────────────────────────────────────────── */
+.terna-header {
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 20px; height: 52px; flex-shrink: 0;
+  background: #1e293b; border-bottom: 1px solid #334155;
+}
+.terna-back-btn {
+  padding: 5px 12px; border-radius: 8px; border: 1px solid #475569;
+  background: transparent; color: #94a3b8; font-size: 12.5px; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.terna-back-btn:hover { border-color: #818cf8; color: #c7d2fe; }
+
+.terna-header-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 700; color: #f1f5f9; flex: 1;
+}
+.terna-logo { font-size: 18px; }
+.terna-header-sub {
+  font-size: 12px; font-weight: 400; color: #64748b; margin-left: 6px;
+}
+.terna-header-meta { display: flex; align-items: center; gap: 14px; }
+.terna-header-status { font-size: 12px; color: #4ade80; font-weight: 600; }
+.terna-header-pylons { font-size: 12px; color: #64748b; }
+
+/* ─── Body ────────────────────────────────────────────────── */
+.terna-body {
+  display: flex; flex: 1; overflow: hidden; min-height: 0;
+}
+
+/* ─── Alert panel ─────────────────────────────────────────── */
+.terna-alerts {
+  width: 230px; flex-shrink: 0;
+  background: #1e293b; border-right: 1px solid #334155;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.terna-alerts-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px 8px; border-bottom: 1px solid #334155;
+}
+.terna-alerts-title { font-size: 12px; font-weight: 700; color: #fbbf24; letter-spacing: .03em; }
+.terna-alerts-count { font-size: 11px; color: #64748b; }
+.terna-alerts-empty { padding: 16px 14px; font-size: 12.5px; color: #475569; }
+
+.terna-alert-list { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; flex: 1; }
+.terna-alert-item {
+  padding: 10px 14px; border-left: 3px solid transparent;
+  cursor: pointer; transition: background .12s;
+}
+.terna-alert-item:hover { background: #263348; }
+.terna-alert-item.is-active { background: #1e3a5f; border-left-color: #818cf8; }
+
+.terna-alert-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.terna-alert-id   { font-size: 13px; font-weight: 700; color: #e2e8f0; font-family: var(--mono); }
+.terna-alert-risk { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+.terna-alert-name { font-size: 11.5px; color: #94a3b8; margin-bottom: 2px; }
+.terna-alert-peak { font-size: 11px; color: #64748b; margin-bottom: 3px; }
+.terna-alert-action {
+  font-size: 10.5px; color: #fbbf24; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ─── Map wrap ────────────────────────────────────────────── */
+.terna-map-wrap {
+  flex: 1; overflow: hidden; position: relative;
+}
+
+/* ─── Detail panel ────────────────────────────────────────── */
+.terna-detail-wrap {
+  width: 300px; flex-shrink: 0;
+  background: #1e293b; border-left: 1px solid #334155;
+  overflow-y: auto;
+}
+.terna-detail-loading {
+  padding: 24px; font-size: 13px; color: #64748b;
+}
+.terna-detail {
+  padding: 16px;
+}
+.terna-detail-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 12px;
+}
+.terna-detail-id   { font-size: 18px; font-weight: 700; color: #e2e8f0; font-family: var(--mono); }
+.terna-detail-loc  { font-size: 12px; color: #64748b; margin-top: 2px; }
+.terna-detail-close {
+  background: none; border: none; color: #64748b; font-size: 14px;
+  cursor: pointer; padding: 4px; line-height: 1;
+}
+.terna-detail-close:hover { color: #94a3b8; }
+
+.terna-risk-badge {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 10px 14px; border-radius: 10px; border: 1px solid;
+  margin-bottom: 10px;
+}
+.terna-risk-pct   { font-size: 28px; font-weight: 800; font-family: var(--mono); line-height: 1; }
+.terna-risk-label { font-size: 13px; font-weight: 600; }
+
+.terna-detail-peak { font-size: 12px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5; }
+.terna-peak-now    { color: #fbbf24; font-weight: 700; }
+
+.terna-sparkline-wrap { margin-bottom: 14px; }
+.terna-sparkline-labels {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: #475569; margin-top: 3px;
+}
+
+.terna-section-label {
+  font-size: 10.5px; font-weight: 700; color: #475569;
+  letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px;
+}
+
+/* Contributions */
+.terna-contribs { list-style: none; margin: 0 0 14px; padding: 0; }
+.terna-contrib-row { margin-bottom: 8px; }
+.terna-contrib-top {
+  display: flex; align-items: baseline; gap: 4px;
+  font-size: 11.5px; margin-bottom: 3px;
+}
+.terna-contrib-label { color: #94a3b8; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.terna-contrib-state { color: #64748b; font-size: 10.5px; font-family: var(--mono); }
+.terna-contrib-delta { font-size: 11px; font-weight: 700; font-family: var(--mono); }
+.terna-contrib-delta.pos { color: #f87171; }
+.terna-contrib-delta.neg { color: #4ade80; }
+
+.terna-contrib-bar-track { height: 4px; background: #1e3a5f; border-radius: 2px; overflow: hidden; }
+.terna-contrib-bar { height: 4px; border-radius: 2px; transition: width .3s; }
+.terna-contrib-bar.pos { background: #ef4444; }
+.terna-contrib-bar.neg { background: #22c55e; }
+
+/* Evidence controls */
+.terna-ev-field { margin-bottom: 10px; }
+.terna-ev-row   { display: flex; align-items: center; justify-content: space-between; }
+.terna-ev-top   { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.terna-ev-label { font-size: 11.5px; color: #94a3b8; }
+.terna-ev-value { font-size: 11.5px; color: #c7d2fe; font-family: var(--mono); }
+
+.terna-seg-group { display: flex; gap: 4px; }
+.terna-seg-btn {
+  padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  border: 1px solid #334155; background: transparent; color: #64748b; cursor: pointer;
+  transition: background .1s, color .1s;
+}
+.terna-seg-btn.active { background: #312e81; border-color: #6366f1; color: #c7d2fe; }
+.terna-seg-btn:hover:not(.active) { border-color: #4b5563; color: #94a3b8; }
+
+/* Actions */
+.terna-actions { list-style: none; margin: 0; padding: 0; }
+.terna-action-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12px; color: #94a3b8; margin-bottom: 7px; line-height: 1.45;
+}
+.terna-action-bullet {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+}
+
+/* ─── Time slider / timeline ──────────────────────────────── */
+.terna-timeline {
+  flex-shrink: 0; padding: 10px 20px 14px;
+  background: #1e293b; border-top: 1px solid #334155;
+}
+.terna-timeline-labels {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11.5px; color: #64748b; margin-bottom: 6px;
+}
+.terna-timeline-current {
+  font-size: 13px; font-weight: 700; color: #c7d2fe; font-family: var(--mono);
+}
+
+/* Risk heatmap bar */
+.terna-heatmap {
+  position: relative; display: flex; height: 8px;
+  border-radius: 4px; overflow: hidden; margin-bottom: 8px;
+}
+.terna-heatmap-cell { flex: 1; }
+.terna-heatmap-cursor {
+  position: absolute; top: -2px; bottom: -2px;
+  width: 3px; background: #fff; border-radius: 2px;
+  transform: translateX(-50%); pointer-events: none;
+  box-shadow: 0 0 4px rgba(255,255,255,0.5);
+}
+
+/* Time range input */
+.terna-time-range {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px; border-radius: 999px; outline: none;
+  background: linear-gradient(90deg, #6366f1 var(--fill), #334155 var(--fill));
+  cursor: pointer;
+}
+.terna-time-range::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 999px; background: transparent;
+}
+.terna-time-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #e0e7ff; border: 2px solid #6366f1;
+  position: relative; top: 50%; transform: translateY(-50%);
+  cursor: pointer; box-shadow: 0 0 0 3px rgba(99,102,241,.25);
+}
+.terna-time-range::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #e0e7ff; border: 2px solid #6366f1; cursor: pointer;
+}
