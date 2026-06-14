@@ -292,38 +292,68 @@ function Sparkline({ risks, currentHour }) {
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 
 function DetailPanel({ detail, hour, onClose }) {
-  const [localEvidence, setLocalEvidence] = useState(null);
-  const [liveRisk, setLiveRisk] = useState(null);
+  // Live evidence = real forecast values for this pylon at this hour.
+  // User evidence = what the sliders currently show (may differ in what-if mode).
+  const [liveEvidence, setLiveEvidence]   = useState(null);
+  const [userEvidence, setUserEvidence]   = useState(null);
+  const [isWhatIf,     setIsWhatIf]       = useState(false);
+  const [whatIfResult, setWhatIfResult]   = useState(null); // { risk, states, contributions }
+  const [computing,    setComputing]      = useState(false);
+  const debounceRef                       = useRef(null);
 
+  // Whenever the selected pylon or the forecast hour changes, snap back to live data.
   useEffect(() => {
-    if (detail) {
-      setLocalEvidence({ ...detail.evidence });
-      setLiveRisk(detail.risk);
-    }
-  }, [detail]);
+    if (!detail) return;
+    const ev = { ...detail.evidence };
+    setLiveEvidence(ev);
+    setUserEvidence(ev);
+    setIsWhatIf(false);
+    setWhatIfResult(null);
+  }, [detail?.id, hour]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const updateEvidence = useCallback((key, val) => {
-    setLocalEvidence(prev => {
-      const next = { ...prev, [key]: val };
-      // Recompute risk client-side via API
-      fetch(`/api/terna/pylons/${detail.id}/detail?hour=${hour}`, {
-        method: 'GET',
-      });
-      return next;
-    });
-    // Debounced re-fetch with updated evidence via POST isn't in spec —
-    // show note that sliders are exploratory (full re-fetch on blur would be cleaner)
-    setLiveRisk(null);
-  }, [detail, hour]);
+  // Debounced Bayesian recompute whenever the user edits evidence.
+  useEffect(() => {
+    if (!isWhatIf || !detail || !userEvidence) return;
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setComputing(true);
+      try {
+        const res = await fetch(`/api/terna/pylons/${detail.id}/compute`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ evidence: userEvidence }),
+        });
+        if (res.ok) setWhatIfResult(await res.json());
+      } catch {}
+      setComputing(false);
+    }, 180);
+    return () => clearTimeout(debounceRef.current);
+  }, [userEvidence, isWhatIf, detail?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleChange = useCallback((key, val) => {
+    setUserEvidence(prev => ({ ...prev, [key]: val }));
+    setIsWhatIf(true);
+  }, []);
+
+  const resetToLive = useCallback(() => {
+    if (!liveEvidence) return;
+    setUserEvidence({ ...liveEvidence });
+    setIsWhatIf(false);
+    setWhatIfResult(null);
+  }, [liveEvidence]);
 
   if (!detail) return null;
 
-  const risk = liveRisk ?? detail.risk;
-  const color = riskColor(risk);
-  const maxContrib = Math.max(...detail.contributions.map(c => Math.abs(c.delta)), 1);
+  // Use what-if results when available, else fall back to the server-fetched values.
+  const displayRisk     = isWhatIf && whatIfResult ? whatIfResult.risk         : detail.risk;
+  const displayContribs = isWhatIf && whatIfResult ? whatIfResult.contributions : detail.contributions;
+  const displayStates   = isWhatIf && whatIfResult ? whatIfResult.states        : (detail.states || {});
 
+  const risk       = displayRisk;
+  const color      = riskColor(risk);
+  const maxContrib = Math.max(...displayContribs.map(c => Math.abs(c.delta)), 1);
   const peakPassed = detail.peak_hour < hour && detail.peak_risk >= 55;
-  const actionPlan = buildActionPlan(risk, detail.states || {}, peakPassed);
+  const actionPlan = buildActionPlan(risk, displayStates, peakPassed);
   const catColor   = CATEGORY_COLORS[actionPlan.category] || '#6366f1';
 
   return (
@@ -336,10 +366,16 @@ function DetailPanel({ detail, hour, onClose }) {
         <button className="terna-detail-close" onClick={onClose}>✕</button>
       </div>
 
-      {/* Risk badge */}
-      <div className="terna-risk-badge" style={{ background: color + '18', borderColor: color }}>
+      {/* Risk badge — dims while computing */}
+      <div
+        className={`terna-risk-badge${computing ? ' is-computing' : ''}`}
+        style={{ background: color + '18', borderColor: color }}
+      >
         <span className="terna-risk-pct" style={{ color }}>{risk.toFixed(1)}%</span>
         <span className="terna-risk-label" style={{ color }}>{riskLabel(risk)} risk</span>
+        {isWhatIf && (
+          <span className="terna-risk-was">monitored: {detail.risk.toFixed(1)}%</span>
+        )}
       </div>
 
       {/* Peak info */}
@@ -356,10 +392,10 @@ function DetailPanel({ detail, hour, onClose }) {
         </div>
       </div>
 
-      {/* Evidence contributions */}
+      {/* Evidence contributions — update in real time with what-if values */}
       <div className="terna-section-label">Why? — Evidence breakdown</div>
       <ul className="terna-contribs">
-        {detail.contributions.map(c => (
+        {displayContribs.map(c => (
           <li key={c.id} className="terna-contrib-row">
             <div className="terna-contrib-top">
               <span className="terna-contrib-label">{c.label}</span>
@@ -378,11 +414,28 @@ function DetailPanel({ detail, hour, onClose }) {
         ))}
       </ul>
 
-      {/* Evidence sliders */}
-      <div className="terna-section-label">Adjust evidence</div>
-      {localEvidence && detail.evidence_meta.map(meta => {
+      {/* Evidence sliders — header row with what-if badge + reset button */}
+      <div className="terna-section-label-row">
+        <span className="terna-section-label" style={{ margin: 0 }}>Adjust evidence</span>
+        {isWhatIf && (
+          <button className="terna-reset-btn" onClick={resetToLive} title="Restore forecast values">
+            ↺ Reset to live data
+          </button>
+        )}
+      </div>
+
+      {isWhatIf && (
+        <div className="terna-whatif-banner">
+          <span className="terna-whatif-tag">⊿ What-if</span>
+          <span className="terna-whatif-desc">
+            Exploring a hypothesis — not the live forecast
+          </span>
+        </div>
+      )}
+
+      {userEvidence && detail.evidence_meta.map(meta => {
         if (meta.kind === 'slider') {
-          const val = localEvidence[meta.id] ?? meta.min;
+          const val = userEvidence[meta.id] ?? meta.min;
           const pct = ((val - meta.min) / (meta.max - meta.min)) * 100;
           return (
             <div key={meta.id} className="terna-ev-field">
@@ -395,19 +448,19 @@ function DetailPanel({ detail, hour, onClose }) {
                 value={val}
                 className="ev-range"
                 style={{ '--fill': `${pct}%` }}
-                onChange={e => updateEvidence(meta.id, parseFloat(e.target.value))}
+                onChange={e => handleChange(meta.id, parseFloat(e.target.value))}
               />
             </div>
           );
         }
         if (meta.kind === 'toggle') {
-          const val = localEvidence[meta.id] ?? false;
+          const val = userEvidence[meta.id] ?? false;
           return (
             <div key={meta.id} className="terna-ev-field terna-ev-row">
               <span className="terna-ev-label">{meta.label}</span>
               <button
                 className={`switch${val ? ' on' : ''}`}
-                onClick={() => updateEvidence(meta.id, !val)}
+                onClick={() => handleChange(meta.id, !val)}
               >
                 <span className="switch-knob" />
                 <span style={{ fontSize: 12, color: val ? '#fff' : 'var(--text-2)' }}>
@@ -418,7 +471,7 @@ function DetailPanel({ detail, hour, onClose }) {
           );
         }
         if (meta.kind === 'segment') {
-          const val = localEvidence[meta.id];
+          const val = userEvidence[meta.id];
           return (
             <div key={meta.id} className="terna-ev-field terna-ev-row">
               <span className="terna-ev-label">{meta.label}</span>
@@ -427,7 +480,7 @@ function DetailPanel({ detail, hour, onClose }) {
                   <button
                     key={o.id}
                     className={`terna-seg-btn${val === o.id ? ' active' : ''}`}
-                    onClick={() => updateEvidence(meta.id, o.id)}
+                    onClick={() => handleChange(meta.id, o.id)}
                   >{o.label}</button>
                 ))}
               </div>
@@ -437,7 +490,7 @@ function DetailPanel({ detail, hour, onClose }) {
         return null;
       })}
 
-      {/* Recommended action */}
+      {/* Recommended action — also updates from what-if states */}
       <div className="terna-section-label" style={{ marginTop: 16 }}>Recommended action</div>
       <div className="terna-action-card" style={{ borderColor: catColor + '55' }}>
         <span className="terna-action-cat-badge" style={{ background: catColor }}>

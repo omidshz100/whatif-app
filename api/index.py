@@ -532,6 +532,23 @@ def terna_full_forecast(hours: int = 48):
     return result
 
 
+class TernaComputeRequest(BaseModel):
+    evidence: Dict[str, Any]
+
+
+@app.post("/api/terna/pylons/{pylon_id}/compute")
+def terna_compute_custom(pylon_id: str, req: TernaComputeRequest):
+    """Compute landslide risk with user-supplied (what-if) evidence for a pylon."""
+    if not terna_syn.PYLON_MAP.get(pylon_id):
+        raise HTTPException(status_code=404, detail="Pylon not found")
+    risk_out = terna_compute_risk(req.evidence)
+    return {
+        "risk":          risk_out["risk"],
+        "states":        risk_out["states"],
+        "contributions": risk_out["contributions"],
+    }
+
+
 @app.get("/api/terna/pylons/{pylon_id}/detail")
 def terna_pylon_detail(pylon_id: str, hour: int = 0):
     """Full Bayesian breakdown for a pylon at a specific forecast hour."""
